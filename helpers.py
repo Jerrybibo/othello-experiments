@@ -60,11 +60,12 @@ def ask_move(legal_moves):
                       "Please enter desired moves as a space-delimited pair of 0-indexed row and column.\n"
                       "Example: '2 3' (3rd row, 4th column) or '6 0' (7th row, 1st column)")
             else:
-                print("Incorrect format. w w"
+                print("Incorrect format."
                       "Please enter desired moves as a space-delimited pair of 0-indexed column and row.\n"
                       "Example: '2 3' (3rd column, 4th row) or '6 0' (7th column, 1st row)")
         except IndexError:
             print("That's an invalid move.")
         else:
             return move
+
 

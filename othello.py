@@ -5,48 +5,27 @@ import random
 from helpers import *
 
 
-def othello(board, player):
+def get_move(board, current_player):
     """
     Helper function to pass the game between players.
     :param board: The current board state, a 2d-List
-    :param player: Player to go next, 0 = black, 1 = white
+    :param current_player: Player to go next, 0 = black, 1 = white
     """
-    if not player:
-        board = get_black_move(board)
-    else:
-        board = get_white_move(board)
-    return board
-
-
-def get_black_move(board):
-    print("It is black's turn.")
-    legal_moves = get_legal_moves(board, player=BLACK)
-    if PLAYER == BLACK:
+    print('It is', NAME_LIST[current_player] + '\'s turn.')
+    legal_moves = get_legal_moves(board, player=current_player)
+    # No legal moves!
+    if len(legal_moves) == 0:
+        return board
+    if current_player == PLAYER:
         print_board(board, legal_moves)
         move = ask_move(legal_moves)
     else:
-        print_board(board)
-        # todo AI is random right now
-        move = random.choice(legal_moves)
-        print("Computer plays", move)
-    board[move[0]][move[1]] = BLACK
-    board = update_board(board, move[0], move[1])
-    return board
-
-
-def get_white_move(board):
-    print("It is white's turn.")
-    legal_moves = get_legal_moves(board, player=WHITE)
-    if PLAYER == WHITE:
         print_board(board, legal_moves)
-        move = ask_move(legal_moves)
-    else:
-        print_board(board)
-        # todo AI is random right now
-        move = random.choice(legal_moves)
-        print("Computer plays", move)
-    board[move[0]][move[1]] = WHITE
-    board = update_board(board, move[0], move[1])
+        # move = random.choice(legal_moves)
+        move = calculate_move(board, current_player, legal_moves)
+        print("Computer played", move[::-1])
+    board = play_and_update(board, move, current_player)
+
     return board
 
 
@@ -59,8 +38,8 @@ def update_board(board, row_index, col_index):
         while 1:
             new_row += move[0]
             new_col += move[1]
-            if board[new_row][new_col] == EMPTY or \
-                    new_row not in range(board_width) or new_col not in range(board_height):
+            if new_row not in range(board_width) or new_col not in range(board_height) or \
+                    board[new_row][new_col] == EMPTY:
                 break
             elif board[new_row][new_col] == color:
                 for traversed_pos in traversed:
@@ -70,6 +49,14 @@ def update_board(board, row_index, col_index):
     return board
 
 
+def check_board(board):
+    """
+    Checks the board for whether the game has finished or not.
+    :param board: Current board state
+    :returns: True if game has ended, False if not
+    """
+    # Terminate if there are no legal moves for either player
+    return True if len(get_legal_moves(board, PLAYER)) == 0 and len(get_legal_moves(board, COMPUTER)) == 0 else False
 
 
 def get_legal_moves(board, player):
@@ -83,8 +70,9 @@ def get_legal_moves(board, player):
     for row_index, row in enumerate(board):
         for col_index, pos in enumerate(row):
             # The current position must be of the opposite color
-            if pos != WHITE - player:
+            if pos != 1 - player:
                 continue
+            # Then we search in all adjacent positions
             for move in MOVES_DELTA:
                 new_row, new_col = row_index + move[0], col_index + move[1]
                 # For a move to be legal, it must be:
@@ -92,22 +80,103 @@ def get_legal_moves(board, player):
                 if new_row not in range(board_width) or new_col not in range(board_height) or \
                         board[new_row][new_col] != EMPTY:
                     continue
-                # 2. Traverse the opposite direction: must be a piece of the player's color
+                # 2. Traverse in the opposite direction; there must be a piece of the player's color
                 search_row, search_col = row_index - move[0], col_index - move[1]
                 while search_row in range(board_width) and search_col in range(board_width):
                     if board[search_row][search_col] == player:
                         valid_moves.add((new_row, new_col))
+                        break
+                    elif board[search_row][search_col] == EMPTY:
                         break
                     search_row -= move[0]
                     search_col -= move[1]
     return list(valid_moves)
 
 
+def calculate_move(board, player, legal_moves=None):
+    """
+    Evaluate, then returns the most optimal move for the current player.
+    :param board: Current board state, a 2d-list
+    :param player: The current player
+    :param legal_moves: A list of legal moves
+    """
+    opponent = 1 - player
+    if legal_moves is None:
+        legal_moves = get_legal_moves(board, player)
+    moves = []
+    for move in legal_moves:
+        player_board = [row[:] for row in board]
+        player_board = play_and_update(player_board, move, player)
+        opponent_legal_moves = get_legal_moves(player_board, opponent)
+        h_sum = 0
+        for opponent_move in opponent_legal_moves:
+            opponent_board = [row[:] for row in player_board]
+            opponent_board = play_and_update(opponent_board, opponent_move, opponent)
+            h_sum += calculate_heuristics(opponent_board, opponent)['h']
+        moves.append([(move[0], move[1]), h_sum])
+    if len(moves) > 0:
+        return sorted(moves, key=lambda x: x[1])[0][0]
+    else:
+        return tuple()
+
+
+def play_and_update(board, move, player):
+    board[move[0]][move[1]] = player
+    return update_board(board, move[0], move[1])
+
+
+def calculate_heuristics(board, player):
+    """
+    Calculate the heuristic value given current board state and player.
+    :param board: Current board state, a 2d-list
+    :param player: The current player
+    """
+    # First, get a bunch of useful information
+    opponent = 1 - player
+    total_board_space = len(board) * len(board[0])
+    # count: range(0, 64)
+    player_count, opponent_count = 0, 0
+    # corners: range(0, 5)
+    player_corners, opponent_corners = 0, 0
+    # weight: around range(-160, 520)
+    weight = 0
+    for row_index, row in enumerate(board):
+        for col_index, pos in enumerate(row):
+            if pos == player:
+                player_count += 1
+                if (row_index, col_index) in CORNERS:
+                    player_corners += 1
+                weight += WEIGHTS[row_index][col_index]
+            elif pos == opponent:
+                opponent_count += 1
+                if (row_index, col_index) in CORNERS:
+                    opponent_corners += 1
+                weight -= WEIGHTS[row_index][col_index]
+    empty_count = total_board_space - player_count - opponent_count
+    return {
+        'h': weight,
+        'player_count': player_count,
+        'opponent_count': opponent_count
+    }  # for now
+
+
 def main():
     board = parse_board('sample.board')
     while True:
-        board = othello(board, player=PLAYER)
-        board = othello(board, player=COMPUTER)
+        board = get_move(board, current_player=BLACK)
+        if check_board(board):
+            break
+        board = get_move(board, current_player=WHITE)
+        if check_board(board):
+            break
+    stats = calculate_heuristics(board, PLAYER)
+    player_count, opponent_count = stats['player_count'], stats['opponent_count']
+    if player_count > opponent_count:
+        print('Congratulations!', PLAYER, 'won!')
+    elif player_count < opponent_count:
+        print(COMPUTER, 'won.')
+    else:
+        print('It\'s a tie.')
 
 
 if __name__ == '__main__':
