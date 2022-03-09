@@ -1,4 +1,3 @@
-from helpers import *
 from othello import *
 
 board = parse_board('sample.board')
