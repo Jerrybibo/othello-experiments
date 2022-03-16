@@ -152,16 +152,19 @@ def calculate_heuristics(board, player):
                 if (row_index, col_index) in CORNERS:
                     opponent_corners += 1
                 weight -= WEIGHTS[row_index][col_index]
+    # Calculate mobility
+    mobility = len(get_legal_moves(board, player))
     empty_count = total_board_space - player_count - opponent_count
+
     return {
-        'h': weight,
+        'h': weight + mobility * 8,
         'player_count': player_count,
         'opponent_count': opponent_count
-    }  # for now
+    }  # for now - todo h-value is tentative
 
 
 def main():
-    board = parse_board('sample.board')
+    board = parse_board(BOARD)
     while True:
         board = get_move(board, current_player=BLACK)
         if check_board(board):
