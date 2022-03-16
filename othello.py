@@ -163,6 +163,41 @@ def calculate_heuristics(board, player):
     }  # for now - todo h-value is tentative
 
 
+def ask_move(legal_moves):
+    while 1:
+        raw_move = input('>> ')
+        try:
+            move = tuple([int(pos) for pos in raw_move.split()])
+            if not FLIP_COORDS:
+                move = move[::-1]
+            if move not in legal_moves:
+                raise IndexError
+        except ValueError:
+            if FLIP_COORDS:
+                print("Incorrect format. "
+                      "Please enter desired moves as a space-delimited pair of 0-indexed row and column.\n"
+                      "Example: '2 3' (3rd row, 4th column) or '6 0' (7th row, 1st column)")
+            else:
+                print("Incorrect format."
+                      "Please enter desired moves as a space-delimited pair of 0-indexed column and row.\n"
+                      "Example: '2 3' (3rd column, 4th row) or '6 0' (7th column, 1st row)")
+        except IndexError:
+            print("That's an invalid move.")
+        else:
+            return move
+
+
+def conclude_game(board):
+    stats = calculate_heuristics(board, PLAYER)
+    player_count, opponent_count = stats['player_count'], stats['opponent_count']
+    if player_count > opponent_count:
+        print('Congratulations!', PLAYER, 'won!')
+    elif player_count < opponent_count:
+        print(COMPUTER, 'won.')
+    else:
+        print('It\'s a tie.')
+
+
 def main():
     board = parse_board(BOARD)
     while True:
@@ -172,14 +207,7 @@ def main():
         board = get_move(board, current_player=WHITE)
         if check_board(board):
             break
-    stats = calculate_heuristics(board, PLAYER)
-    player_count, opponent_count = stats['player_count'], stats['opponent_count']
-    if player_count > opponent_count:
-        print('Congratulations!', PLAYER, 'won!')
-    elif player_count < opponent_count:
-        print(COMPUTER, 'won.')
-    else:
-        print('It\'s a tie.')
+    conclude_game(board)
 
 
 if __name__ == '__main__':

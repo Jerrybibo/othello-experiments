@@ -43,29 +43,3 @@ def print_board(board, legal_moves=None):
                 print(' ' + CONVERSION_LIST[pos] + ' |', end='')
         print()
     print('   +' + '---+' * len(board[0]))
-
-
-def ask_move(legal_moves):
-    while 1:
-        raw_move = input('>> ')
-        try:
-            move = tuple([int(pos) for pos in raw_move.split()])
-            if not FLIP_COORDS:
-                move = move[::-1]
-            if move not in legal_moves:
-                raise IndexError
-        except ValueError:
-            if FLIP_COORDS:
-                print("Incorrect format. "
-                      "Please enter desired moves as a space-delimited pair of 0-indexed row and column.\n"
-                      "Example: '2 3' (3rd row, 4th column) or '6 0' (7th row, 1st column)")
-            else:
-                print("Incorrect format."
-                      "Please enter desired moves as a space-delimited pair of 0-indexed column and row.\n"
-                      "Example: '2 3' (3rd column, 4th row) or '6 0' (7th column, 1st row)")
-        except IndexError:
-            print("That's an invalid move.")
-        else:
-            return move
-
-
